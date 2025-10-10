@@ -1,0 +1,9 @@
+numpy>=1.23
+pandas>=2.0
+scikit-learn>=1.2
+gplearn>=0.4.2
+yfinance>=0.2.40
+pandas-datareader>=0.10.0
+tqdm>=4.66
+pyyaml>=6.0
+scipy>=1.11

@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-10-06T23:18:37.790492",
+  "generator": {
+    "name": "gplearn",
+    "train_samples": 344140,
+    "n_jobs": 1
+  },
+  "validation_metrics": {
+    "rank_ic": 0.021339271150557074,
+    "ls_return_mean": 0.00046237692356442494,
+    "ls_return_std": 0.004509597496275791,
+    "ls_sharpe": 1.627641073603844,
+    "ls_psr": 1.0,
+    "ls_dsr": 1.0,
+    "ls_mdd": -0.04003406225165029
+  },
+  "test_metrics": {
+    "rank_ic": 0.018078592823627018,
+    "ls_return_mean": 0.0004603558142817835,
+    "ls_return_std": 0.007363466369574701,
+    "ls_sharpe": 0.9924567626667258,
+    "ls_psr": 1.0,
+    "ls_dsr": 0.9999999999999998,
+    "ls_mdd": -0.1140229296248394
+  },
+  "config": {
+    "start_date": "2020-01-01",
+    "end_date": null,
+    "horizon_days": 3,
+    "universe": "sp500",
+    "tickers_file": "data/tickers.txt",
+    "generation_seed": 42,
+    "population_size": 140,
+    "generations": 5,
+    "tournament_size": 6,
+    "stopping_criteria": 0.055,
+    "const_range": [
+      -0.2,
+      0.2
+    ],
+    "parsimony_coefficient": 0.0007,
+    "metric": "rank_ic",
+    "p_crossover": 0.65,
+    "p_subtree_mutation": 0.18,
+    "p_point_mutation": 0.1,
+    "p_hoist_mutation": 0.04,
+    "top_quantile": 0.2,
+    "bottom_quantile": 0.2,
+    "embargo_days": 5,
+    "min_group_size": 30,
+    "annualization": 252,
+    "alpha_generator": {
+      "name": "gplearn",
+      "params": {
+        "n_jobs": 1
+      }
+    },
+    "archive": {
+      "enabled": true,
+      "metric_source": "validation",
+      "min_rank_ic": 0.01,
+      "min_sharpe": null,
+      "min_psr": null,
+      "min_dsr": null,
+      "max_trials": 10,
+      "path": "archive"
+    },
+    "cost_bps_oneway": 1.0
+  },
+  "program": "tanh(sub(tanh(tanh(X8)), add(X0, X6)))"
+}

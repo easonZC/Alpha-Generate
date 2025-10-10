@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-10-06T22:19:31.905267",
+  "generator": {
+    "name": "tsfresh",
+    "train_samples": 344140,
+    "window": 20,
+    "n_features": 10
+  },
+  "validation_metrics": {
+    "rank_ic": -0.015152074370526881,
+    "ls_return_mean": -0.0007882517972295801,
+    "ls_return_std": 0.005501258131727561,
+    "ls_sharpe": -2.2745904766125915,
+    "ls_psr": 3.1810303966915086e-55,
+    "ls_dsr": 3.1038382280036765e-59,
+    "ls_mdd": -0.22906231431985236
+  },
+  "test_metrics": {
+    "rank_ic": -0.01114471511512741,
+    "ls_return_mean": -0.0004489351199415572,
+    "ls_return_std": 0.006883409650719097,
+    "ls_sharpe": -1.0353334255306714,
+    "ls_psr": 1.667267184248718e-22,
+    "ls_dsr": 5.401403394070514e-26,
+    "ls_mdd": -0.20163648449456228
+  },
+  "config": {
+    "start_date": "2020-01-01",
+    "end_date": null,
+    "horizon_days": 3,
+    "universe": "sp500",
+    "tickers_file": "data/tickers.txt",
+    "generation_seed": 42,
+    "population_size": 200,
+    "generations": 5,
+    "tournament_size": 5,
+    "stopping_criteria": 0.05,
+    "const_range": [
+      -0.2,
+      0.2
+    ],
+    "parsimony_coefficient": 0.0005,
+    "metric": "rank_ic",
+    "p_crossover": 0.65,
+    "p_subtree_mutation": 0.18,
+    "p_point_mutation": 0.1,
+    "p_hoist_mutation": 0.04,
+    "top_quantile": 0.2,
+    "bottom_quantile": 0.2,
+    "embargo_days": 5,
+    "min_group_size": 30,
+    "annualization": 252,
+    "alpha_generator": {
+      "name": "tsfresh",
+      "params": {
+        "window": 20,
+        "value_column": "Close",
+        "tsfresh_n_jobs": 0,
+        "min_feature_fraction": 0.5
+      }
+    },
+    "archive": {
+      "enabled": true,
+      "metric_source": "validation",
+      "min_rank_ic": null,
+      "min_sharpe": null,
+      "min_psr": null,
+      "min_dsr": null,
+      "max_trials": 10,
+      "path": "archive"
+    },
+    "cost_bps_oneway": 1.0
+  },
+  "program": "Pipeline(steps=[('scaler', StandardScaler(with_mean=False)),\n                ('regressor', Ridge())])"
+}

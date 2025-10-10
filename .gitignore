@@ -1,0 +1,11 @@
+﻿__pycache__/
+*.py[cod]
+.venv/
+env/
+.ipynb_checkpoints/
+data/
+results/
+*.parquet
+*.csv
+*.xlsx
+*.pth
