@@ -29,7 +29,7 @@ This repository contains a modular research stack for discovering and validating
    - `run_markowitz_backtest` (inside `src/model/factor_workflow.py`) builds long/short portfolios using a covariance-aware Markowitz routine with parsimony guards:
      - population shrinkage, market-cap weights, volatility re-scaling, soft caps (`tanh`) and prediction mixing.
      - spread-based exposure control (monthly top/bottom return spread).
-   - `python -m diagnostics.run_valtest_evaluation` reuses cached predictions to generate backtests and SHAP artefacts without re-running the full GP search.
+   - `python -m diagnostics.run_test_evaluation` reuses cached predictions to generate backtests and SHAP artefacts without re-running the full GP search.
    - Default outputs: `results/symbolic_transformer/backtest_timeseries.parquet`, `backtest_cumulative.png`, `backtest_summary.json`.
 
 ## Quick Start
