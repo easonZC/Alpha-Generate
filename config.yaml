@@ -22,10 +22,18 @@ p_point_mutation: 0.10
 p_hoist_mutation: 0.04
 
 # evaluation
-top_quantile: 0.2
-bottom_quantile: 0.2
+top_quantile: 0.08
+bottom_quantile: 0.08
 embargo_days: 5         # gap between train/valid/test splits
 min_group_size: 30      # min #stocks in a day to count IC
 
+symbolic:
+  n_components: 60
+
 # backtest
 cost_bps_oneway: 1.0    # 1bp per side, set 0 for frictionless
+
+shap:
+  max_samples: 800
+  top_k: 10
+

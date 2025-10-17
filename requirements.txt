@@ -7,3 +7,5 @@ pandas-datareader>=0.10.0
 tqdm>=4.66
 pyyaml>=6.0
 scipy>=1.11
+requests>=2.31.0
+xgboost>=3.0.0
