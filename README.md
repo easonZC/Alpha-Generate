@@ -125,6 +125,3 @@ docs/images/                  # Updated plots (backtest & SHAP)
 ---
 
 Questions, experiments, or improvements? Feel free to adapt the config, add new alpha generators, or open a PR!
-
----
-Happy factor hunting! Feel free to open issues/PRs with improvements or bug reports.
