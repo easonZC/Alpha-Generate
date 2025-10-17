@@ -1,121 +1,130 @@
 # GP Factor Pipeline (US Equities, Daily)
 
 This project builds an end-to-end research stack for cross-sectional equity alphas.  
-It combines **gplearn SymbolicTransformer** (to expand factor space), **XGBoost** (for modelling and SHAP feature
+It combines **gplearn SymbolicTransformer** (to expand the factor space), **XGBoost** (for modelling + SHAP feature
 selection), and a **covariance-aware Markowitz** backtest with benchmark comparison.
 
-The current workflow lives in `train_tree_pipeline.py`.  
-The original `run_pipeline.py` is kept only as a lightweight symbolic-regressor demo and no longer used for the main experiments.
+The production workflow is in `train_tree_pipeline.py`.  
+`run_pipeline.py` remains only as a minimal symbolic-regressor demo and is no longer used for the main experiments.
 
-## End-to-End Flow
+---
 
-1. **Data layer**
-   - Universe: S&P 500 constituents (downloaded from Wikipedia).
-  - Prices: daily OHLCV fetched via `yfinance`.
-  - Cached under `data/` – no raw prices are committed.
+## Workflow Summary
 
-2. **Feature construction**
-   - Base technical features: returns, momentum, volatility, RSI, moving-average spreads, etc.
-   - Symbolic features: 60 expressions per run from `gplearn.SymbolicTransformer`
-     (configurable via `config.yaml:symbolic.*`). Expression map saved to
-     `results/symbolic_feature_map.json`.
-   - All features are cross-sectionally z-scored each trading day.
+1. **Data & features**
+   - Universe: S&P 500 constituents, fetched from Wikipedia.
+  - Prices: daily OHLCV via `yfinance` (`data/prices.parquet`).
+  - Base features: returns, momentum, volatility, RSI, moving-average spreads, etc.
+
+2. **Symbolic factor expansion**
+   - `gplearn.SymbolicTransformer` (15 generations × 2000 population) trained on the **train split only**.
+   - Generates 60 symbolic expressions/run → stored in `results/symbolic_feature_map.json`.
+   - Base + symbolic features are cross-sectionally z-scored each trading day.
 
 3. **Label preparation**
-   - Target: 3-day forward return (`y_fwd` in `data/features.parquet`).
-   - For modelling, the label is converted to daily cross-sectional percentile ranks
-     (centred at 0) to stabilise rank-based metrics.
+   - Target: 3-day forward return (`y_fwd`).
+   - Transformed to daily cross-sectional percentile ranks (centered at 0) before model fitting.
 
 4. **Model training & SHAP pruning**
-   - Model: `xgboost.XGBRegressor` (defaults: hist tree method, 400 estimators,
-     max depth 6, learning rate 0.05, subsample 0.8, colsample 0.5, `random_state=42`).
-   - Training set: 60 % earliest dates; validation: next 20 %; test: last 20 %, with
-     embargo fallback logic to guarantee non-empty splits.
-   - SHAP (`TreeExplainer`) runs on the validation slice, selecting the top 10 features
-     (combining base + symbolic). Final XGBoost model is refit using train+validation data
-     restricted to these 10 factors.
-   - Artefacts:
-     - `results/model_summary.json` (IC metrics, parameters, selected factors).
-     - `results/top_features.json` (ordered list of top 10 factors).
-     - `results/final_xgb_model.json` (serialised booster).
-     - SHAP plots/importance: `results/shap/shap_validation.png`,
-       `results/shap/shap_test.png`, `results/shap_importance_{validation,test}.csv`.
+   - Model: `xgboost.XGBRegressor` (`tree_method=hist`, `n_estimators=400`, `max_depth=6`,
+     `learning_rate=0.05`, `subsample=0.8`, `colsample_bytree=0.5`, `reg_lambda=1.0`).
+   - Train + validation split (60/20/20 with embargo fallback) ensures no leakage.
+   - SHAP (`TreeExplainer`) on the validation slice; keep Top‑10 features by `mean(|SHAP|)`.
+   - Example Top‑10: `rsi14`, `dist_ma20`, `sym_7`, `sym_5`, `sym_1`, `ma_gap`, `sym_30`, `ma10`, `sym_37`, `sym_27`.
+   - Final XGBoost model retrained on train+validation, restricted to these 10 factors.
 
-5. **Backtesting**
-   - Script: `diagnostics.run_markowitz_backtest` (optionally invoked via
-     `diagnostics/run_test_evaluation.py`).
-   - Parameters (defaults, override in CLI or `config.yaml`):
-     - `top_quantile`, `bottom_quantile` (currently both 0.08).
-     - Rolling lookback 63 trading days.
-     - Ridge regularisation `1e-4`.
-     - Soft weight cap 0.08, gross leverage 1.0, min basket size 20.
-     - Transaction cost 1 bp per side.
-   - Produces daily long/short weights, turnover, and returns. Baseline benchmark is
-     S&P 500 (^GSPC). Summaries land in:
+5. **Backtest**
+   - `diagnostics.run_markowitz_backtest` (called from `train_tree_pipeline.py` & `diagnostics/run_test_evaluation.py`).
+   - Parameters: `top_quantile=bottom_quantile=0.08`, `lookback=63`, `max_abs_weight=0.08`, `gross_leverage=1.0`,
+     `min_bucket=20`, `ridge=1e-4`, `cost_bps=1`.
+   - Daily rebalancing: quantile baskets → Markowitz weights (with soft caps & transaction costs).
+   - Outputs:
      - `results/markowitz_valid_summary.json`
-     - `results/markowitz_test_summary.json` (includes annual alpha vs benchmark)
-   - Time-series parquet files include strategy and benchmark equity curves for plotting.
+     - `results/markowitz_test_summary.json`
+     - Daily series in `results/markowitz_{valid|test}_ts.parquet`
 
-6. **Visuals**
-   - `docs/images/backtest_cumulative.png`: strategy vs benchmark test-equity curve.
-   - `docs/images/shap_summary.png`: validation SHAP beeswarm with overlaid mean |SHAP|.
+6. **Artefacts**
+   - `results/model_summary.json`: IC metrics, selected factors, hyperparameters, annual alpha.
+   - `results/top_features.json`: ordered Top‑10 factor list.
+   - `results/shap_importance_validation.csv`, `results/shap_importance_test.csv`.
+   - Plots copied to `docs/images/` with `python -m diagnostics.render_figures`.
+
+---
+
+## Latest Results (SymbolicTransformer + XGBoost)
+
+**Validation split**
+- IC ≈ **0.0081**
+- Sharpe ≈ **0.43**
+- Annual return ≈ **4.0%**
+
+**Out-of-sample test split**
+- IC ≈ **0.0121**
+- Annual return ≈ **31.3%**
+- Sharpe ≈ **2.24**
+- Max drawdown ≈ **-14.1%**
+- Information ratio ≈ **0.35**
+- Annual alpha vs S&P 500 ≈ **11.8%**
+
+### Test Backtest Equity Curve
+
+<p align="center">
+  <img src="docs/images/backtest_cumulative.png" alt="Backtest Equity Curve" width="680">
+</p>
+
+The long/short Markowitz portfolio (blue) grows roughly **31%** annualised with a Sharpe of **2.24**, consistently outperforming the S&P 500 benchmark (orange).  The mild drawdown (~14%) reflects daily rebalancing with soft risk caps.
+
+### Validation SHAP (Top‑10 Features)
+
+<p align="center">
+  <img src="docs/images/shap_summary.png" alt="Validation SHAP" width="680">
+</p>
+
+The SHAP beeswarm shows that both classical factors (`rsi14`, `dist_ma20`, `ma10`, `ma_gap`, …) and symbolic features (`sym_7`, `sym_5`, `sym_1`, `sym_30`, `sym_37`, `sym_27`) drive the model.  Positive SHAP contributions lean toward mean-reversion (e.g., high RSI → negative returns), while several symbolic factors act as nonlinear volatility/dispersion gauges discovered during the GP search.
+
+---
 
 ## Quick Start
 
 ```bash
 python -m venv .venv
-. .venv/Scripts/activate      # or source .venv/bin/activate on Unix
+. .venv/Scripts/activate         # or source .venv/bin/activate
 pip install -r requirements.txt
 python train_tree_pipeline.py
 ```
 
-This single command:
-1. Ensures data/feature caches.
-2. Generates 60 symbolic factors (train-only fit).
-3. Trains XGBoost, computes SHAP, keeps top 10 factors.
-4. Predicts validation/test IC, exports SHAP graphics/tables.
-5. Runs Markowitz backtests (validation + out-of-sample test).
+This command executes the entire pipeline: data prep, SymbolicTransformer fitting, XGBoost training, SHAP selection, and Markowitz backtests.  Outputs populate `results/` and plots/figures update under `docs/images/`.
 
-The resulting files appear under `results/` and plots under `docs/images/`.
+---
 
-## Diagnostics Commands
+## Diagnostics & Utilities
 
-| Purpose                                    | Command |
-|--------------------------------------------|---------|
-| Re-run Markowitz backtest only             | `python -m diagnostics.run_markowitz_backtest --top_quantile 0.08 --bottom_quantile 0.08 --max_abs_weight 0.08 --min_bucket 20` |
-| Copy SHAP plots & backtest curve to docs   | `python -m diagnostics.render_figures` |
-| Refresh summaries & copies after edits     | `python -m diagnostics.run_test_evaluation` |
+| Purpose                                       | Command |
+|----------------------------------------------|---------|
+| Re-run Markowitz only (custom params)        | `python -m diagnostics.run_markowitz_backtest --top_quantile 0.08 --bottom_quantile 0.08 --max_abs_weight 0.08 --min_bucket 20` |
+| Copy SHAP/test plots to docs (no retraining) | `python -m diagnostics.render_figures` |
+| Refresh SHAP + backtests from cached preds   | `python -m diagnostics.run_test_evaluation` |
 
-(`run_pipeline.py` can be ignored unless you want the legacy single-factor demo.)
+*The legacy `run_pipeline.py` (single-factor symbolic regression demo) is preserved for reference but not used in this workflow.*
 
-## Key Outputs
-
-- `results/model_summary.json` – IC metrics, selected factors, model params.
-- `results/top_features.json` – top 10 features (mix of base + symbolic).
-- `results/shap_importance_test.csv` – SHAP ranking on the genuine test set.
-- `results/markowitz_test_summary.json` – annualised return, Sharpe, max drawdown, info ratio, alpha.
-- `docs/images/backtest_cumulative.png` – comparison chart (strategy vs S&P 500).
-- `docs/images/shap_summary.png` – validation SHAP beeswarm + mean |SHAP|.
+---
 
 ## Repository Layout
 
 ```
-train_tree_pipeline.py        # Main end-to-end pipeline (SymbolicTransformer + XGBoost + Markowitz)
+train_tree_pipeline.py        # Main pipeline: SymbolicTransformer + XGBoost + SHAP + Markowitz
 run_pipeline.py               # Legacy demo (SymbolicRegressor only)
 diagnostics/
-  run_markowitz_backtest.py   # Markowitz backtest engine
-  run_test_evaluation.py      # Copies SHAP & reruns backtests with chosen params
+  run_markowitz_backtest.py   # Daily Markowitz engine with benchmark comparison
+  run_test_evaluation.py      # Copies SHAP + reruns backtests
   render_figures.py           # Copies SHAP plot & regenerates equity curve
 data/                         # Cached prices/features (ignored by git)
-docs/images/                  # Plots used in README/reporting
+docs/images/                  # Updated plots (backtest & SHAP)
 ```
 
-## Contributing & Notes
+---
 
-- Adjust `config.yaml` to change SymbolicTransformer population/generations or XGBoost hyperparameters.
-- To experiment with LightGBM or alternative learners, swap out model training in `train_tree_pipeline.py`.
-- `run_pipeline.py` remains for backwards compatibility but is not part of the production workflow.
-- Large datasets/results stay out of version control; only lightweight JSON/plots are persisted.
+Questions, experiments, or improvements? Feel free to adapt the config, add new alpha generators, or open a PR!
 
 ---
 Happy factor hunting! Feel free to open issues/PRs with improvements or bug reports.
