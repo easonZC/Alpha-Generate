@@ -17,7 +17,7 @@ The production workflow is in `train_tree_pipeline.py`.
   - Base features: returns, momentum, volatility, RSI, moving-average spreads, etc.
 
 2. **Symbolic factor expansion**
-   - `gplearn.SymbolicTransformer` (10 generations × 600 population) trained on the **train split only**.
+   - `gplearn.SymbolicTransformer` (15 generations × 2000 population) trained on the **train split only**.
    - Generates 60 symbolic expressions/run → stored in `results/symbolic_feature_map.json`.
    - Base + symbolic features are cross-sectionally z-scored each trading day.
 
